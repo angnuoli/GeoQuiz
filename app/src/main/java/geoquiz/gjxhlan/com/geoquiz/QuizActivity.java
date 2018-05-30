@@ -8,14 +8,22 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+
 public class QuizActivity extends AppCompatActivity {
 
     private final static String TAG = "QuizActivity";
     private final static String KEY_INDEX = "index";
+    private final static String KEY_ANSWERED_QUESTIONS = "answered questions";
+    private final static String KEY_RIGHT_ANSWERS = "right answers";
+    private final static String KEY_WRONG_ANSWERS = "wrong answers";
+
+    ArrayList<Integer> mAnsweredQuestions = new ArrayList<>();
+    private int mRightAnswers = 0;
+    private int mWrongAnswers = 0;
 
     private Button mTrueButton;
     private Button mFalseButton;
-    private Button mNextButton;
     private TextView mQuestionTextView;
 
     private Question[] mQuestions = new Question[] {
@@ -39,24 +47,15 @@ public class QuizActivity extends AppCompatActivity {
 
         if (savedInstanceState != null) {
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+            mAnsweredQuestions = savedInstanceState.getIntegerArrayList(KEY_ANSWERED_QUESTIONS);
+            mRightAnswers = savedInstanceState.getInt(KEY_RIGHT_ANSWERS, 0);
+            mWrongAnswers = savedInstanceState.getInt(KEY_WRONG_ANSWERS, 0);
         }
-
-        updateQuestion();
-
-
-        mQuestionTextView.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                mCurrentIndex = (mCurrentIndex + 1) % mQuestions.length;
-                updateQuestion();
-            }
-        });
 
         mTrueButton = findViewById(R.id.true_button);
         mTrueButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //toast.setGravity(Gravity.TOP, 0, 0);
                 checkAnswer(true);
             }
         });
@@ -69,8 +68,19 @@ public class QuizActivity extends AppCompatActivity {
             }
         });
 
-        mNextButton = findViewById(R.id.next_button);
-        mNextButton.setOnClickListener(new View.OnClickListener() {
+        updateQuestion();
+
+        mQuestionTextView.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                mCurrentIndex = (mCurrentIndex + 1) % mQuestions.length;
+                updateQuestion();
+            }
+        });
+
+
+        Button nextButton = findViewById(R.id.next_button);
+        nextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mCurrentIndex = (mCurrentIndex + 1) % mQuestions.length;
@@ -83,12 +93,44 @@ public class QuizActivity extends AppCompatActivity {
     private void updateQuestion() {
         int question = mQuestions[mCurrentIndex].getTextResId();
         mQuestionTextView.setText(question);
+        updateButton();
+    }
+
+    /** change the state of buttons **/
+    private void updateButton() {
+        if (mAnsweredQuestions.contains(mCurrentIndex)) {
+            blockQuestionButton();
+        } else {
+            permitQuestionButton();
+        }
+    }
+
+    private void blockQuestionButton() {
+        mTrueButton.setEnabled(false);
+        mFalseButton.setEnabled(false);
+    }
+
+    private void permitQuestionButton() {
+        mTrueButton.setEnabled(true);
+        mFalseButton.setEnabled(true);
     }
 
     private void checkAnswer(boolean selectedAnswer) {
-        int msgResId = mQuestions[mCurrentIndex].isAnswerTrue() == selectedAnswer ? R.string.correct_toast : R.string.incorrect_toast;
+        mAnsweredQuestions.add(mCurrentIndex);
+        int msgResId;
+        if (mQuestions[mCurrentIndex].isAnswerTrue() == selectedAnswer) {
+            msgResId = R.string.correct_toast;
+            mRightAnswers++;
+        } else {
+            msgResId = R.string.incorrect_toast;
+            mWrongAnswers++;
+        }
         Toast.makeText(QuizActivity.this, msgResId, Toast.LENGTH_SHORT)
                 .show();
+        if (mAnsweredQuestions.size() == mQuestions.length) {
+            Toast.makeText(QuizActivity.this, "The points are " + mRightAnswers + " / " + mQuestions.length + ".", Toast.LENGTH_SHORT).show();
+        }
+        updateButton();
     }
 
     @Override
@@ -114,6 +156,9 @@ public class QuizActivity extends AppCompatActivity {
         super.onSaveInstanceState(savedInstanceState);
         Log.d(TAG, "onSaveInstanceState " + mCurrentIndex);
         savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+        savedInstanceState.putIntegerArrayList(KEY_ANSWERED_QUESTIONS, mAnsweredQuestions);
+        savedInstanceState.putInt(KEY_RIGHT_ANSWERS, mRightAnswers);
+        savedInstanceState.putInt(KEY_WRONG_ANSWERS, mWrongAnswers);
     }
 
     @Override
